@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         if (moteur === 'CHINE') {
             traduction = `[Test Chine] ${texte}`;
         } else {
-            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(texte)}&langpair=${source || 'fr'}|${cible || 'en'}`;
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(texte)}&langpair=${source || 'fr'}|${cible || 'pt'}`;
             const response = await fetch(url);
             const data = await response.json();
             traduction = data.responseData.translatedText;

@@ -6,6 +6,10 @@ const moteurGeo = document.getElementById('moteurGeo');
 const colCadre = document.getElementById('colCadre'), colBtnInact = document.getElementById('colBtnInact'), colAct = document.getElementById('colAct');
 const bgColA = document.getElementById('bgColA'), bgColB = document.getElementById('bgColB');
 
+// Initialisation par défaut
+langTop.value = 'fr-FR';
+langBottom.value = 'pt-BR';
+
 const labels = {
     'fr-FR': "Appuyer pour parler", 'pt-BR': "Pressione para falar", 'pt-PT': "Prima para falar",
     'es-ES': "Presione para hablar", 'de-DE': "Zum Sprechen drücken", 'it-IT': "Premi per parlare",
@@ -36,6 +40,8 @@ function logConversation(sourceText, tradText) {
 async function lancerTraduction(cote) {
     const btn = document.getElementById(cote === 'top' ? 'btnTop' : 'btnBottom');
     const source = (cote === 'top') ? langTop.value : langBottom.value;
+    const cible = (cote === 'top') ? langBottom.value : langTop.value;
+    
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     rec.lang = source;
     rec.onstart = () => { btn.style.backgroundColor = colAct.value; btn.innerText = "..."; };
@@ -43,19 +49,25 @@ async function lancerTraduction(cote) {
     rec.start();
     rec.onresult = async (e) => {
         const texte = e.results[0][0].transcript;
-        // Envoi complet pour respecter le contrat API
         const res = await fetch('/api/traductions', { 
             method: 'POST', 
             body: JSON.stringify({ 
                 texte: texte, 
                 source: source.split('-')[0], 
-                cible: 'en', // Par défaut
+                cible: cible.split('-')[0], 
                 moteur: moteurGeo.value 
             }), 
             headers: {'Content-Type':'application/json'} 
         });
         const data = await res.json();
         logConversation(texte, data.traduction);
-        const synth = new SpeechSynthesisUtterance(data.traduction); window.speechSynthesis.speak(synth);
+        
+        const synth = new SpeechSynthesisUtterance(data.traduction); 
+        synth.lang = cible; 
+        window.speechSynthesis.speak(synth);
     };
 }
+
+// Initialisation visuelle
+updateBtnText('btnTop', langTop.value);
+updateBtnText('btnBottom', langBottom.value);
