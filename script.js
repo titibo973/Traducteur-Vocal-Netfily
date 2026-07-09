@@ -1,52 +1,57 @@
-const textTop = document.getElementById('text-top'), textBottom = document.getElementById('text-bottom');
-const bgCol = document.getElementById('bgCol'), colInact = document.getElementById('colInact'), colAct = document.getElementById('colAct');
+const btnTop = document.getElementById('btnTop'), btnBottom = document.getElementById('btnBottom');
+const logTop = document.getElementById('logTop'), logBottom = document.getElementById('logBottom');
+const langTop = document.getElementById('langTop'), langBottom = document.getElementById('langBottom');
 
-function setNom(id) {
-    const nom = prompt("Entrez votre nom/initiale :");
-    if (nom) document.getElementById(id).innerText = nom.charAt(0).toUpperCase();
-}
+// Éléments couleurs
+const colCadre = document.getElementById('colCadre'), colBtnInact = document.getElementById('colBtnInact'), colAct = document.getElementById('colAct');
+const bgColA = document.getElementById('bgColA'), bgColB = document.getElementById('bgColB');
 
-bgCol.addEventListener('input', (e) => {
-    document.getElementById('zoneTop').style.backgroundColor = e.target.value;
-    document.getElementById('zoneBottom').style.backgroundColor = e.target.value;
+const labels = {
+    'fr-FR': "Appuyer pour parler", 'pt-BR': "Pressione para falar", 'pt-PT': "Prima para falar",
+    'es-ES': "Presione para hablar", 'de-DE': "Zum Sprechen drücken", 'it-IT': "Premi per parlare",
+    'ht-HT': "Peze pou pale", 'gcr-GF': "Pézé pou palé"
+};
+
+function updateBtnText(id, val) { document.getElementById(id).innerText = labels[val] || "Speak"; }
+function setNom(id) { const nom = prompt("Pseudo :"); if (nom) document.getElementById(id).innerText = nom; }
+function exporterPDF() { window.print(); }
+
+// Gestion des couleurs
+colCadre.addEventListener('input', (e) => {
+    document.body.style.borderColor = e.target.value;
+    document.getElementById('divider').style.backgroundColor = e.target.value;
+    document.getElementById('zoneTop').style.borderColor = e.target.value;
+    document.getElementById('zoneBottom').style.borderColor = e.target.value;
+});
+bgColA.addEventListener('input', (e) => document.getElementById('zoneTop').style.backgroundColor = e.target.value);
+bgColB.addEventListener('input', (e) => document.getElementById('zoneBottom').style.backgroundColor = e.target.value);
+colBtnInact.addEventListener('input', (e) => {
+    btnTop.style.backgroundColor = e.target.value;
+    btnBottom.style.backgroundColor = e.target.value;
 });
 
-function updateBtn(btn, active) {
-    btn.style.backgroundColor = active ? colAct.value : colInact.value;
+function logConversation(sourceText, tradText) {
+    [logTop, logBottom].forEach(log => {
+        const div = document.createElement('div');
+        div.className = 'text-line';
+        div.innerText = `${sourceText} ➔ ${tradText}`;
+        log.appendChild(div);
+    });
 }
 
 async function lancerTraduction(cote) {
     const btn = document.getElementById(cote === 'top' ? 'btnTop' : 'btnBottom');
-    const source = document.getElementById(cote === 'top' ? 'langTop' : 'langBottom').value;
-    const cible = (cote === 'top') ? document.getElementById('langBottom').value : document.getElementById('langTop').value;
+    const source = (cote === 'top') ? langTop.value : langBottom.value;
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    
     rec.lang = source;
-    rec.onstart = () => { btn.classList.add('active'); updateBtn(btn, true); };
-    rec.onend = () => { btn.classList.remove('active'); updateBtn(btn, false); };
+    rec.onstart = () => { btn.style.backgroundColor = colAct.value; btn.innerText = "..."; };
+    rec.onend = () => { btn.style.backgroundColor = colBtnInact.value; updateBtnText(btn.id, source); };
     rec.start();
-
     rec.onresult = async (e) => {
         const texte = e.results[0][0].transcript;
-        const res = await fetch('/api/traductions', { 
-            method: 'POST', 
-            body: JSON.stringify({ 
-                texte: texte, 
-                source: source.split('-')[0], 
-                cible: cible.split('-')[0], 
-                moteur: 'GLOBAL' 
-            }), 
-            headers: {'Content-Type':'application/json'}
-        });
+        const res = await fetch('/api/traductions', { method: 'POST', body: JSON.stringify({ texte }), headers: {'Content-Type':'application/json'} });
         const data = await res.json();
-        
-        if (cote === 'top') { textTop.innerText = texte; textBottom.innerText = data.traduction; }
-        else { textBottom.innerText = texte; textTop.innerText = data.traduction; }
-
-        // Réactivation de la synthèse vocale
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(data.traduction);
-        utterance.lang = cible;
-        window.speechSynthesis.speak(utterance);
+        logConversation(texte, data.traduction);
+        const synth = new SpeechSynthesisUtterance(data.traduction); window.speechSynthesis.speak(synth);
     };
 }
