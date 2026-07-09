@@ -18,16 +18,35 @@ function updateBtn(btn, active) {
 async function lancerTraduction(cote) {
     const btn = document.getElementById(cote === 'top' ? 'btnTop' : 'btnBottom');
     const source = document.getElementById(cote === 'top' ? 'langTop' : 'langBottom').value;
+    const cible = (cote === 'top') ? document.getElementById('langBottom').value : document.getElementById('langTop').value;
     const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     
+    rec.lang = source;
     rec.onstart = () => { btn.classList.add('active'); updateBtn(btn, true); };
     rec.onend = () => { btn.classList.remove('active'); updateBtn(btn, false); };
     rec.start();
 
     rec.onresult = async (e) => {
-        const res = await fetch('/api/traductions', { method: 'POST', body: JSON.stringify({ texte: e.results[0][0].transcript, source: source.split('-')[0], cible: (source==='fr-FR'?'pt':'fr'), moteur: 'GLOBAL' }), headers:{'Content-Type':'application/json'}});
+        const texte = e.results[0][0].transcript;
+        const res = await fetch('/api/traductions', { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+                texte: texte, 
+                source: source.split('-')[0], 
+                cible: cible.split('-')[0], 
+                moteur: 'GLOBAL' 
+            }), 
+            headers: {'Content-Type':'application/json'}
+        });
         const data = await res.json();
-        if (cote === 'top') { textTop.innerText = e.results[0][0].transcript; textBottom.innerText = data.traduction; }
-        else { textBottom.innerText = e.results[0][0].transcript; textTop.innerText = data.traduction; }
+        
+        if (cote === 'top') { textTop.innerText = texte; textBottom.innerText = data.traduction; }
+        else { textBottom.innerText = texte; textTop.innerText = data.traduction; }
+
+        // Réactivation de la synthèse vocale
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(data.traduction);
+        utterance.lang = cible;
+        window.speechSynthesis.speak(utterance);
     };
 }
