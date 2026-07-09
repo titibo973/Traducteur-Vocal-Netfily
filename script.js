@@ -1,8 +1,8 @@
 const btnTop = document.getElementById('btnTop'), btnBottom = document.getElementById('btnBottom');
 const logTop = document.getElementById('logTop'), logBottom = document.getElementById('logBottom');
 const langTop = document.getElementById('langTop'), langBottom = document.getElementById('langBottom');
+const moteurGeo = document.getElementById('moteurGeo');
 
-// Éléments couleurs
 const colCadre = document.getElementById('colCadre'), colBtnInact = document.getElementById('colBtnInact'), colAct = document.getElementById('colAct');
 const bgColA = document.getElementById('bgColA'), bgColB = document.getElementById('bgColB');
 
@@ -16,7 +16,6 @@ function updateBtnText(id, val) { document.getElementById(id).innerText = labels
 function setNom(id) { const nom = prompt("Pseudo :"); if (nom) document.getElementById(id).innerText = nom; }
 function exporterPDF() { window.print(); }
 
-// Gestion des couleurs
 colCadre.addEventListener('input', (e) => {
     document.body.style.borderColor = e.target.value;
     document.getElementById('divider').style.backgroundColor = e.target.value;
@@ -25,17 +24,12 @@ colCadre.addEventListener('input', (e) => {
 });
 bgColA.addEventListener('input', (e) => document.getElementById('zoneTop').style.backgroundColor = e.target.value);
 bgColB.addEventListener('input', (e) => document.getElementById('zoneBottom').style.backgroundColor = e.target.value);
-colBtnInact.addEventListener('input', (e) => {
-    btnTop.style.backgroundColor = e.target.value;
-    btnBottom.style.backgroundColor = e.target.value;
-});
+colBtnInact.addEventListener('input', (e) => { btnTop.style.backgroundColor = e.target.value; btnBottom.style.backgroundColor = e.target.value; });
 
 function logConversation(sourceText, tradText) {
     [logTop, logBottom].forEach(log => {
-        const div = document.createElement('div');
-        div.className = 'text-line';
-        div.innerText = `${sourceText} ➔ ${tradText}`;
-        log.appendChild(div);
+        const div = document.createElement('div'); div.className = 'text-line';
+        div.innerText = `${sourceText} ➔ ${tradText}`; log.appendChild(div);
     });
 }
 
@@ -49,7 +43,17 @@ async function lancerTraduction(cote) {
     rec.start();
     rec.onresult = async (e) => {
         const texte = e.results[0][0].transcript;
-        const res = await fetch('/api/traductions', { method: 'POST', body: JSON.stringify({ texte }), headers: {'Content-Type':'application/json'} });
+        // Envoi complet pour respecter le contrat API
+        const res = await fetch('/api/traductions', { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+                texte: texte, 
+                source: source.split('-')[0], 
+                cible: 'en', // Par défaut
+                moteur: moteurGeo.value 
+            }), 
+            headers: {'Content-Type':'application/json'} 
+        });
         const data = await res.json();
         logConversation(texte, data.traduction);
         const synth = new SpeechSynthesisUtterance(data.traduction); window.speechSynthesis.speak(synth);
